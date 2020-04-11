@@ -399,6 +399,12 @@ repmgr_inject_postgresql_configuration() {
     postgresql_set_property "logging_collector" "on"
     postgresql_set_property "log_directory" "$POSTGRESQL_LOG_DIR"
     postgresql_set_property "log_filename" "postgresql.log"
+    # SSL
+    if is_boolean_yes "$POSTGRESQL_ENABLE_TLS"; then
+        postgresql_set_property "ssl" "on"
+        postgresql_set_property "ssl_cert_file" "${POSTGRESQL_TLS_CERT_FILE}"
+        postgresql_set_property "ssl_key_file" "${POSTGRESQL_TLS_KEY_FILE}"
+    fi
     cp "$POSTGRESQL_CONF_FILE" "${POSTGRESQL_MOUNTED_CONF_DIR}/postgresql.conf"
 }
 
@@ -414,13 +420,16 @@ repmgr_inject_postgresql_configuration() {
 #########################
 repmgr_inject_pghba_configuration() {
     repmgr_debug "Injecting a new pg_hba.conf file..."
-
+    local connection_type="host"
+    if is_boolean_yes "$POSTGRESQL_ENABLE_TLS"; then
+        connection_type="hostssl"
+    fi
     cat > "${POSTGRESQL_MOUNTED_CONF_DIR}/pg_hba.conf" << EOF
-host     all            $REPMGR_USERNAME    0.0.0.0/0    trust
-host     $REPMGR_DATABASE         $REPMGR_USERNAME    0.0.0.0/0    trust
-host     replication      $REPMGR_USERNAME    0.0.0.0/0    trust
-host     all              all       0.0.0.0/0    trust
-host     all              all       ::1/128      trust
+$connection_type     all            $REPMGR_USERNAME    0.0.0.0/0    trust
+$connection_type     $REPMGR_DATABASE         $REPMGR_USERNAME    0.0.0.0/0    trust
+$connection_type     replication      $REPMGR_USERNAME    0.0.0.0/0    trust
+$connection_type     all              all       0.0.0.0/0    trust
+$connection_type     all              all       ::1/128      trust
 local    all              all                    trust
 EOF
 }

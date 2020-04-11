@@ -119,6 +119,11 @@ export POSTGRESQL_INITSCRIPTS_DIR=/docker-entrypoint-initdb.d
 export POSTGRESQL_PREINITSCRIPTS_DIR=/docker-entrypoint-preinitdb.d
 export PATH="$POSTGRESQL_BIN_DIR:$PATH"
 
+# SSL
+export POSTGRESQL_ENABLE_TLS="${POSTGRESQL_ENABLE_TLS:-no}"
+export POSTGRESQL_TLS_CERT_FILE="${POSTGRESQL_TLS_CERT_FILE:-}"
+export POSTGRESQL_TLS_KEY_FILE="${POSTGRESQL_TLS_KEY_FILE:-}"
+
 # Users
 export POSTGRESQL_DAEMON_USER="postgresql"
 export POSTGRESQL_DAEMON_GROUP="postgresql"
@@ -286,6 +291,19 @@ postgresql_validate() {
 
     if is_boolean_yes "$POSTGRESQL_ENABLE_LDAP" && [[ -n "$POSTGRESQL_LDAP_URL" ]] && [[ -n "$POSTGRESQL_LDAP_SERVER" ]]; then
         empty_password_error "You can not set POSTGRESQL_LDAP_URL and POSTGRESQL_LDAP_SERVER at the same time. Check your LDAP configuration."
+    fi
+
+    if ! is_yes_no_value "$POSTGRESQL_ENABLE_TLS"; then
+        empty_password_error "The values allowed for POSTGRESQL_ENABLE_TLS are: yes or no"
+    fi
+
+    if is_boolean_yes "$POSTGRESQL_ENABLE_TLS"; then
+        if [[ -z "$POSTGRESQL_TLS_CERT_FILE" ]]; then
+            print_validation_error "POSTGRESQL_TLS_CERT_FILE has to be provided"
+        fi
+        if [[ -z "$POSTGRESQL_TLS_KEY_FILE" ]]; then
+            print_validation_error "POSTGRESQL_TLS_KEY_FILE has to be provided"
+        fi
     fi
 
     [[ "$error_code" -eq 0 ]] || exit "$error_code"
